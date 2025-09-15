@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Daily Album Picks by ChatGPT</title>
+    <link>https://music.apple.com/</link>
+    <description>Curated daily Apple Music album highlights.</description>
+
+    <item>
+      <title>Miles Davis - Kind of Blue</title>
+      <link>https://music.apple.com/us/album/kind-of-blue/268443092</link>
+      <description>
+        Release Date: August 17, 1959
+        Why it’s exceptional: The best-selling jazz album of all time, Kind of Blue is a modal jazz masterpiece. Miles Davis, with Coltrane, Adderley, and Evans, redefined improvisation with minimal chord changes and maximum emotional depth.
+      </description>
+      <pubDate>Mon, 15 Sep 2025 08:00:00 EST</pubDate>
+    </item>
+  </channel>
+</rss>
