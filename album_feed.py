@@ -1,12 +1,13 @@
 import os
 import datetime
-import openai
+import json
 from xml.etree import ElementTree as ET
+from openai import OpenAI
 
 # ========= CONFIG =========
 RSS_FILE = "index.xml"   # Path to your RSS feed file
-MODEL = "gpt-5"          # Use GPT-5 for recommendations
-openai.api_key = os.getenv("OPENAI_API_KEY")
+MODEL = "gpt-4o-mini"    # Use GPT-4o-mini (or gpt-4o, gpt-5 if available)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ==========================
 
 PROMPT = """
@@ -23,24 +24,19 @@ You are a music expert. Provide ONE daily Apple Music album recommendation in th
 
 def get_daily_album():
     """Fetch a fresh album recommendation from OpenAI."""
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "system", "content": PROMPT}],
         max_tokens=400
     )
 
-    content = response["choices"][0]["message"]["content"]
-
-    # Parse JSON safely
-    import json
-    album = json.loads(content)
-    return album
+    content = response.choices[0].message.content
+    return json.loads(content)
 
 def add_item_to_rss(album):
     """Insert a new <item> into the RSS feed."""
     if not os.path.exists(RSS_FILE):
-        # Create a basic RSS skeleton if file doesn't exist
-        rss_template = f"""<?xml version="1.0" encoding="UTF-8"?>
+        rss_template = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
     <title>Daily Album Picks</title>
@@ -56,7 +52,6 @@ def add_item_to_rss(album):
     root = tree.getroot()
     channel = root.find("channel")
 
-    # Create item
     item = ET.Element("item")
     ET.SubElement(item, "title").text = f"{album['artist']} - {album['album']}"
     ET.SubElement(item, "link").text = album["link"]
@@ -66,10 +61,7 @@ def add_item_to_rss(album):
     )
     ET.SubElement(item, "pubDate").text = datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S EST")
 
-    # Insert new item at top
     channel.insert(0, item)
-
-    # Save file
     tree.write(RSS_FILE, encoding="utf-8", xml_declaration=True)
 
 if __name__ == "__main__":
