@@ -14,6 +14,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: List repo files (debug)
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Files in repo:"
+          ls -R
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -24,10 +31,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run album feed script
+      - name: Run album feed script (with check)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python album_feed.py
+        run: |
+          if [ -f "album_feed.py" ]; then
+            python album_feed.py
+          else
+            echo "❌ album_feed.py not found in repo root!"
+            exit 1
+          fi
 
       - name: Commit and push changes
         run: |
