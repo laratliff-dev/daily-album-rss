@@ -10,7 +10,7 @@ MODEL = "gpt-4o-mini"    # Use GPT-4o-mini (or gpt-4o, gpt-5 if available)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ==========================
 
-PROMPT = """
+BASE_PROMPT = """
 You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format:
 
 Rules:
