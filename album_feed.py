@@ -1,6 +1,7 @@
 import os
 import datetime
 import json
+import re
 from xml.etree import ElementTree as ET
 from openai import OpenAI
 
@@ -56,29 +57,44 @@ def get_recent_albums(days=30):
     return recent_titles
 
 def get_daily_album():
-    """Fetch a fresh album recommendation, avoiding duplicates."""
+    """Fetch a fresh album recommendation, avoiding duplicates and handling malformed JSON."""
     recent_albums = get_recent_albums(30)
     history_context = "Albums already recommended: " + ", ".join(recent_albums)
 
-    for attempt in range(3):  # up to 3 tries if duplicates slip through
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": BASE_PROMPT},
-                {"role": "user", "content": history_context}
-            ],
-            max_tokens=400
-        )
-        content = response.choices[0].message.content
-        album = json.loads(content)
+    for attempt in range(3):  # up to 3 tries if bad JSON or duplicates
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": BASE_PROMPT},
+                    {"role": "user", "content": history_context}
+                ],
+                max_tokens=400
+            )
+            content = response.choices[0].message.content.strip()
+            if not content:
+                print("⚠️ Empty response from API, retrying...")
+                continue
 
-        full_title = f"{album['artist']} - {album['album']}"
-        if full_title not in recent_albums:
-            return album
-        else:
-            print(f"⚠️ Duplicate detected ({full_title}), retrying...")
+            # Remove Markdown fences if present
+            content = re.sub(r"^```(json)?|```$", "", content).strip()
 
-    raise RuntimeError("Could not generate a unique album after 3 attempts")
+            # Try parsing JSON
+            album = json.loads(content)
+
+            full_title = f"{album['artist']} - {album['album']}"
+            if full_title not in recent_albums:
+                return album
+            else:
+                print(f"⚠️ Duplicate detected ({full_title}), retrying...")
+
+        except json.JSONDecodeError:
+            print(f"⚠️ JSON parse error on attempt {attempt+1}. Raw content:\n{content}\nRetrying...")
+            continue
+        except Exception as e:
+            print(f"⚠️ Unexpected error: {e}, retrying...")
+
+    raise RuntimeError("Could not generate valid album JSON after 3 attempts.")
 
 def add_item_to_rss(album):
     """Insert a new <item> into the RSS feed."""
