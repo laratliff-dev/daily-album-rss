@@ -24,7 +24,7 @@ Rules:
   "artist": "Artist Name",
   "album": "Album Title",
   "release_date": "Month DD, YYYY",
-  "link": "https://music.apple.com/...",
+  "link": "https://music.apple.com/us/...",
   "description": "A short paragraph explaining why this album is exceptional."
 }
 """
