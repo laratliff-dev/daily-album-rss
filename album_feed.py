@@ -16,7 +16,8 @@ You are a music expert. Provide ONE daily Apple Music album recommendation in th
 
 Rules:
 - Do NOT repeat any artist or album from the list provided.
-- Favor diversity in genre, decade, and geography.
+- Prioritize rock genre and favor diversity in sub-genres of that.
+- Favor diversity in decade and geography.
 - Highlight something exceptional, overlooked, or legendary.
 
 {
@@ -27,6 +28,23 @@ Rules:
   "description": "A short paragraph explaining why this album is exceptional."
 }
 """
+
+# BASE_PROMPT = """
+# You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format:
+# 
+# Rules:
+# - Do NOT repeat any artist or album from the list provided.
+# - Favor diversity in genre, decade, and geography.
+# - Highlight something exceptional, overlooked, or legendary.
+# 
+# {
+#   "artist": "Artist Name",
+#   "album": "Album Title",
+#   "release_date": "Month DD, YYYY",
+#   "link": "https://music.apple.com/...",
+#   "description": "A short paragraph explaining why this album is exceptional."
+# }
+# """
 
 def get_recent_albums(days=30):
     """Extract recently recommended albums from RSS feed (by title)."""
