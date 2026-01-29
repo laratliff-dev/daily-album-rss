@@ -4,47 +4,59 @@ import json
 import re
 from xml.etree import ElementTree as ET
 from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ========= CONFIG =========
 RSS_FILE = "index.xml"   # Path to your RSS feed file
 MODEL = "gpt-4o-mini"    # Use GPT-4o-mini (or gpt-4o, gpt-5 if available)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Validate API key exists
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError(
+        "OPENAI_API_KEY environment variable is not set.\n"
+        "Please set it in your environment or .env file."
+    )
+
+# SSL verification - set to False if behind corporate proxy
+# Add VERIFY_SSL=false to your .env file if you get SSL certificate errors
+verify_ssl = os.getenv("VERIFY_SSL", "true").lower() != "false"
+
+import httpx
+client = OpenAI(
+    api_key=api_key,
+    http_client=httpx.Client(verify=verify_ssl) if not verify_ssl else None
+)
 # ==========================
+
+MAX_TOKENS = 400
+TEMPERATURE = 1.2  # Higher temperature for more variability (default: 1.0)
+TOP_P = 0.95       # Nucleus sampling for diverse outputs
 
 BASE_PROMPT = """
 You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format:
 
 Rules:
-- Do NOT repeat any artist or album from the list provided.
-- Prioritize rock genre and favor diversity in sub-genres of that.
+- Do NOT repeat any artist or album from the list provided. 
+- Prioritize rock and pop genres and favor diversity in sub-genres of that.
 - Favor diversity in decade and geography.
-- Highlight something exceptional, overlooked, or legendary.
+- Highlight something exceptional or legendary.
+- Consider deep cuts, cult classics, and underrated gems from different eras.
+- Be creative and think outside the box.
 
 {
   "artist": "Artist Name",
   "album": "Album Title",
   "release_date": "Month DD, YYYY",
-  "link": "https://music.apple.com/us/...",
+  "link": "https://music.apple.com/",
   "description": "A short paragraph explaining why this album is exceptional."
 }
-"""
 
-# BASE_PROMPT = """
-# You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format:
-# 
-# Rules:
-# - Do NOT repeat any artist or album from the list provided.
-# - Favor diversity in genre, decade, and geography.
-# - Highlight something exceptional, overlooked, or legendary.
-# 
-# {
-#   "artist": "Artist Name",
-#   "album": "Album Title",
-#   "release_date": "Month DD, YYYY",
-#   "link": "https://music.apple.com/...",
-#   "description": "A short paragraph explaining why this album is exceptional."
-# }
-# """
+Note: Use the generic Apple Music homepage URL for the link field.
+"""
 
 def get_recent_albums(days=30):
     """Extract recently recommended albums from RSS feed (by title)."""
@@ -84,10 +96,18 @@ def get_daily_album():
             response = client.chat.completions.create(
                 model=MODEL,
                 messages=[
-                    {"role": "system", "content": BASE_PROMPT},
-                    {"role": "user", "content": history_context}
+                    {
+                        "role": "system", 
+                        "content": f"{BASE_PROMPT}\n\n{history_context}"
+                    },
+                    {
+                        "role": "user", 
+                        "content": "Please recommend one album following the rules above."
+                    }
                 ],
-                max_tokens=400
+                max_tokens=MAX_TOKENS,
+                temperature=TEMPERATURE,
+                top_p=TOP_P
             )
             content = response.choices[0].message.content.strip()
             if not content:
@@ -109,8 +129,28 @@ def get_daily_album():
         except json.JSONDecodeError:
             print(f"⚠️ JSON parse error on attempt {attempt+1}. Raw content:\n{content}\nRetrying...")
             continue
+        except ConnectionError as e:
+            print(f"❌ Network connection error on attempt {attempt+1}: {e}")
+            print("   Check your internet connection and try again.")
+            if attempt == 2:  # Last attempt
+                raise
+            continue
         except Exception as e:
-            print(f"⚠️ Unexpected error: {e}, retrying...")
+            error_type = type(e).__name__
+            error_msg = str(e)
+            print(f"⚠️ {error_type} on attempt {attempt+1}: {error_msg}")
+            
+            # Provide specific guidance for common errors
+            if "authentication" in error_msg.lower() or "api key" in error_msg.lower():
+                print("   → Check that your OPENAI_API_KEY is valid and active.")
+            elif "rate limit" in error_msg.lower():
+                print("   → You've hit the API rate limit. Wait a moment before retrying.")
+            elif "timeout" in error_msg.lower():
+                print("   → Request timed out. Check your internet connection.")
+            
+            if attempt == 2:  # Last attempt
+                raise
+            continue
 
     raise RuntimeError("Could not generate valid album JSON after 3 attempts.")
 
