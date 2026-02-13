@@ -33,8 +33,8 @@ client = OpenAI(
 # ==========================
 
 MAX_TOKENS = 400
-TEMPERATURE = 1.2  # Higher temperature for more variability (default: 1.0)
-TOP_P = 0.95       # Nucleus sampling for diverse outputs
+TEMPERATURE = 1.3  # Higher temperature for more variability (default: 1.0)
+TOP_P = 0.97       # Nucleus sampling for diverse outputs
 
 BASE_PROMPT = """
 You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format:
@@ -42,20 +42,19 @@ You are a music expert. Provide ONE daily Apple Music album recommendation in th
 Rules:
 - Do NOT repeat any artist or album from the list provided. 
 - Prioritize rock and pop genres and favor diversity in sub-genres of that.
-- Favor diversity in decade and geography.
+- Prioritize albums from the 70s, 80s, and 90s.
 - Highlight something exceptional or legendary.
 - Consider deep cuts, cult classics, and underrated gems from different eras.
-- Be creative and think outside the box.
 
 {
   "artist": "Artist Name",
   "album": "Album Title",
   "release_date": "Month DD, YYYY",
-  "link": "https://music.apple.com/",
+  "link": "https://music.apple.com/...",
   "description": "A short paragraph explaining why this album is exceptional."
 }
 
-Note: Use the generic Apple Music homepage URL for the link field.
+Note: Use the Apple Music English site album URL for the link field.
 """
 
 def get_recent_albums(days=30):
