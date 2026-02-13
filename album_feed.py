@@ -54,7 +54,7 @@ Rules:
   "description": "A short paragraph explaining why this album is exceptional."
 }
 
-Note: Use the Apple Music English site album URL for the link field.
+Note: Use the Apple Music US site album URL for the link field.
 """
 
 def get_recent_albums(days=30):
