@@ -37,15 +37,18 @@ TEMPERATURE = 1.3  # Higher temperature for more variability (default: 1.0)
 TOP_P = 0.97       # Nucleus sampling for diverse outputs
 
 BASE_PROMPT = """
-You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format:
+#Objective#
+You are a music expert. Provide ONE daily Apple Music album recommendation in this strict JSON format.
 
-Rules:
+##Rules##
 - Do NOT repeat any artist or album from the list provided. 
-- Prioritize rock and pop genres and favor diversity in sub-genres of that.
+- Prioritize rock, pop, country, rap, and alternative genres.
 - Prioritize albums from the 70s, 80s, and 90s.
-- Highlight something exceptional or legendary.
-- Consider deep cuts, cult classics, and underrated gems from different eras.
+- Use the runtime date context to interpret "this week in those decades" as the same week-of-year in the past.
+- Strict chart accuracy is not required; plausible era-appropriate picks are acceptable.
+- If uncertain, avoid claiming exact chart positions or exact historical dates.
 
+##JSON Format##
 {
   "artist": "Artist Name",
   "album": "Album Title",
@@ -56,6 +59,26 @@ Rules:
 
 Note: Use the Apple Music US site album URL for the link field.
 """
+
+def build_runtime_context(now=None):
+    """Build deterministic date/week context to ground model behavior."""
+    if now is None:
+        now = datetime.datetime.now().astimezone()
+
+    week_start = now - datetime.timedelta(days=now.weekday())
+    week_end = week_start + datetime.timedelta(days=6)
+    iso_week = now.isocalendar().week
+
+    return "\n".join([
+        "Runtime date context:",
+        f"- Current local date: {now.strftime('%Y-%m-%d')}",
+        f"- Day of week: {now.strftime('%A')}",
+        f"- Local timezone: {now.tzname() or 'local'}",
+        f"- ISO week number: {iso_week}",
+        f"- Week window (Mon-Sun): {week_start.strftime('%Y-%m-%d')} to {week_end.strftime('%Y-%m-%d')}",
+        "- Interpret 'this week in those decades' as this same week-of-year in the 1970s/1980s/1990s.",
+        "- Plausible era fit is acceptable; avoid fabricated exact chart ranks.",
+    ])
 
 def get_recent_albums(days=30):
     """Extract recently recommended albums from RSS feed (by title)."""
@@ -88,7 +111,10 @@ def get_recent_albums(days=30):
 def get_daily_album():
     """Fetch a fresh album recommendation, avoiding duplicates and handling malformed JSON."""
     recent_albums = get_recent_albums(30)
-    history_context = "Albums already recommended: " + ", ".join(recent_albums)
+    runtime_context = build_runtime_context()
+    history_context = "Albums already recommended: " + (
+        ", ".join(recent_albums) if recent_albums else "none in the last 30 days"
+    )
 
     for attempt in range(3):  # up to 3 tries if bad JSON or duplicates
         try:
@@ -97,7 +123,7 @@ def get_daily_album():
                 messages=[
                     {
                         "role": "system", 
-                        "content": f"{BASE_PROMPT}\n\n{history_context}"
+                        "content": f"{BASE_PROMPT}\n\n{runtime_context}\n\n{history_context}"
                     },
                     {
                         "role": "user", 
