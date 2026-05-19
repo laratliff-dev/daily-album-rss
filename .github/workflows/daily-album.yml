@@ -2,8 +2,8 @@ name: Daily Album Feed
 
 on:
   schedule:
-    # Run every day at 11:55 UTC = 7:55am ET
-    - cron: "55 11 * * *"
+    # Run every day at 11:30 UTC = 7:30am ET
+    - cron: "30 11 * * *"
   workflow_dispatch:  # Allow manual runs too
 
 permissions:
