@@ -57,14 +57,20 @@ jobs:
           git commit -m "Daily album update" || echo "No changes to commit"
           git push
 
+      - name: Prepare Pages content
+        run: |
+          mkdir -p _site
+          cp index.xml _site/
+          touch _site/.nojekyll
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
