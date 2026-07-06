@@ -7,25 +7,27 @@ on:
   workflow_dispatch:  # Allow manual runs too
 
 permissions:
-  contents: write   # ✅ allows commits & pushes
-  
+  contents: write   # allows commits & pushes
+  pages: write      # allows deploying to GitHub Pages
+  id-token: write   # allows OIDC token for Pages deployment
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false  # don't cancel in-flight deployments
+
 jobs:
   update-feed:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: List repo files (debug)
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Files in repo:"
-          ls -R
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -34,14 +36,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run album feed script (with check)
+      - name: Run album feed script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           if [ -f "album_feed.py" ]; then
             python album_feed.py
           else
-            echo "❌ album_feed.py not found in repo root!"
+            echo "album_feed.py not found in repo root!"
             exit 1
           fi
 
@@ -54,5 +56,15 @@ jobs:
           git add index.xml
           git commit -m "Daily album update" || echo "No changes to commit"
           git push
-          git commit -m "Daily album update" || echo "No changes to commit"
-          git push
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
